@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="description" content="A site with a bunch of tasks">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>TaskList</title>
+        <link rel="stylesheet" href="main.css">
+        <script defer src="jquery-3.6.0.min.js"></script>
+        <script defer src="main.js"></script>
+    </head>
+    <body>
+        <header>
+            <div class="header-wrap">
+                <h1>The fabulous task list</h1>
+                <p>Feel free to edit these tasks to your heart's content.</p>
+            </div>
+            <form>
+                <label for="filter-type">Filter:</label><br>
+                <select id="filter-type" name="filter">
+                    <option>None</option>
+                </select>
+                <input type="submit" value="Apply">
+            </form>
+        </header>
+        <div class="modal modal-login">
+            <form class="modal-content" method="post" enctype="multipart/form-data">
+                <input type="text" id="login-username" name="username" placeholder="Username" required><br>
+                <input type="password" id="login-password" name="password" placeholder="Password" required><br>
+                <input type="submit" class="button-submit" value="Log in">
+                <input type="button" class="button-signup" value="Sign up">
+            </form>
+        </div>
+        <div class="modal modal-task">
+            <form class="modal-content" method="post" enctype="multipart/form-data">
+                <label for="task-name">Task name:</label>
+                <input type="text" id="task-name" name="name" value="Task name" required><br>
+                <label for="task-status">Status:</label>
+                <select id="task-status" name="statusid">
+                    
+                </select><br>
+                <label for="task-date">Completion date:</label>
+                <input type="date" id="task-date" name="date"><br>
+                <label for="task-file">File:</label>
+                <input type="file" id="task-file" name="file"><br>
+                <input type="submit" class="button-submit" value="Update task">
+                <input type="reset">
+                <input type="button" class="button-close" value="Close">
+            </form>
+        </div>
+        <main>
+            <button class="task-add-button">
+                Add task
+            </button>
+            <div class="task">
+                <div class="task-content">
+                    Some task: some status<br>
+                    Completion date: None<br>
+                    File: None
+                </div>
+                <div class="task-dropdown">
+                    <button class="task-button"><i class="icon icon-edit"></i></button>
+                    <button class="task-button"><i class="icon icon-delete"></i></button>
+                </div>
+            </div>
+        </main>
+    </body>
+</html>

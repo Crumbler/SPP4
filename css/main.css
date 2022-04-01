@@ -1,0 +1,156 @@
+
+body
+{
+    padding-left: 8rem;
+    padding-right: 8rem;
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+}
+
+header
+{
+    padding: 2rem;
+    margin-bottom: 0;
+
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+header, main > .task
+{
+    background-color: bisque;
+}
+
+header h1
+{
+    margin-top: 0;
+
+    font-size: 3rem;
+}
+
+header p
+{
+    margin-bottom: 0;
+}
+
+header p, main, form *
+{
+    font-size: 2rem;
+}
+
+.modal
+{
+    display: none;
+    position: fixed;
+    z-index: 1;
+    overflow: none;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+
+    background-color: black;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content
+{
+    background-color: bisque;
+    padding: 1rem;
+    margin: 15% auto;
+    max-width: max-content;
+}
+
+.modal-content > *
+{
+    margin-top: 1rem;
+    font-size: 2rem;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+.modal-task .modal-content > *:first-child, .modal-task .modal-content > *:nth-child(2)
+{
+    margin-top: 0;
+}
+
+main
+{
+    margin-top: 2rem;
+
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 2rem 4rem;
+}
+
+.modal, .task-content
+{
+    padding: 1.5rem;
+}
+
+.task-add-button
+{
+    border: none;
+    background-color: bisque;
+    cursor: pointer;
+    font-size: 2rem;
+    padding: 1rem;
+}
+
+.task-add-button:hover
+{
+    background-color: aqua;
+}
+
+.task-dropdown
+{
+    display: none;
+    background-color: cornflowerblue;
+    position: absolute;
+    height: max-content;
+}
+
+.task:hover > .task-dropdown
+{
+    display: block;
+}
+
+.task-button
+{
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+
+    padding: 10px;
+}
+
+.task-button:hover
+{
+    background-color: aqua;
+}
+
+.icon
+{
+    width: 64px;
+    height: 64px;
+
+    background-repeat: no-repeat;
+    background-size: contain;
+
+    display: block;
+}
+
+.icon-edit
+{
+    background-image: url('gear-fill.svg');
+}
+
+.icon-delete
+{
+    background-image: url('trash3-fill.svg');
+}
