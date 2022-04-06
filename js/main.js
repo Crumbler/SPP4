@@ -10,7 +10,7 @@ let statuses, tasks, currentTask,
 
 let addingTask = false;
 
-let socket = io();
+let socket;
 
 
 window.onload = onWindowLoad;
@@ -25,6 +25,13 @@ $('.task-add-button').click(onAddClick);
 
 async function onWindowLoad() {
     clearTasks();
+
+    socket = io();
+
+    if (!checkAuth()) {
+        return;
+    }
+
     await getStatuses();
     getTasks();
 }
@@ -32,6 +39,12 @@ async function onWindowLoad() {
 
 function clearTasks() {
     $('.task').remove();
+}
+
+
+function checkAuth() {
+
+    return true;
 }
 
 

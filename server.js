@@ -2,39 +2,21 @@ const express = require('express');
 const multer  = require('multer');
 const upload = multer({ dest: 'Task files/' });
 const fs = require('fs');
-const cookieParser = require('cookie-parser');
 const { path, use } = require('express/lib/application');
 const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+const cookie = require('cookie');
 const { Server } = require('socket.io');
 const app = express();
 const http = require('http');
 const server = http.createServer(app);
-const io = new Server(server);
+let io;
 const bcrypt = require('bcrypt');
+const res = require('express/lib/response');
 
 const port = 80;
 const jwtKey = 'mysecretkey';
 const jwtExpirySeconds = 300;
-
-
-app.use('/', express.static('html'));
-app.use('/', express.static('css'));
-app.use('/', express.static('js'));
-app.use('/', express.static('svg'));
-
-app.get('/socket.io.js', (req, res) => {
-  res.sendFile(__dirname + 'node_modules/socket.io/client-dist/socket.io.js');
-});
-
-
-io.on('connection', (socket) => {
-  console.log('a user connected');
-
-  socket.on('disconnect', () => {
-    console.log('user disconnected');
-  });
-});
-
 
 let statuses;
 
@@ -42,13 +24,75 @@ function loadStatuses() {
   statuses = JSON.parse(fs.readFileSync('taskStatuses.json'));
 }
 
+
 loadStatuses();
 
 
+app.use('/', express.static('html'));
+app.use('/', express.static('css'));
+app.use('/', express.static('js'));
+app.use('/', express.static('svg'));
+
+
+app.get('/socket.io.js', (req, res) => {
+  res.sendFile(__dirname + 'node_modules/socket.io/client-dist/socket.io.js');
+});
+
 app.use(cookieParser());
 
+app.post('/signup', upload.none(), onSignup);
+app.post('/login', upload.none(), onLogin);
 
-app.post('/signup', upload.none(), (req, res) => {
+app.use(checkAuth);
+
+app.get('/statuses', onGetStatuses);
+app.get('/tasks', onGetTasks);
+app.get('/tasks/:id/file', onGetTaskFile);
+app.put('/tasks/:id/update', upload.single('file'), onUpdateTask);
+app.post('/tasks/add', upload.single('file'), onTaskAdd);
+app.delete('/tasks/:id/delete', onTaskDelete);
+
+io = new Server(server, {
+  allowRequest: checkHandshake
+});
+
+
+function checkHandshake(req, callback) {
+  if (!req.headers.cookie) {
+    console.log('Authentication rejected due to lack of token');
+    return;
+  }
+
+  const cookies = cookie.parse(req.headers.cookie);
+
+  const token = cookies.token;
+
+  if (!token) {
+    console.log('Authentication rejected due to lack of token');
+    return;
+  }
+
+  try {
+		jwt.verify(token, jwtKey);
+	} catch (err) {
+		if (err instanceof jwt.JsonWebTokenError) {
+			// Unauthorized JWT
+      console.log('Unauthorized JWT');
+			return;
+		}
+		// Otherwise, bad request
+    console.log('Bad request');
+		return;
+	}
+
+  callback(null, true);
+}
+
+
+io.on('connection', onConnection);
+
+
+function onSignup(req, res) {
   let { username, password } = req.body;
 
   const rawUsers = fs.readFileSync('users.json');
@@ -88,10 +132,10 @@ app.post('/signup', upload.none(), (req, res) => {
   console.log('Successful signup and login');
 
   res.status(200).end();
-});
+}
 
 
-app.post('/login', upload.none(), (req, res) => {
+function onLogin(req, res) {
   const { username, password } = req.body;
 
   const rawUsers = fs.readFileSync('users.json');
@@ -120,7 +164,7 @@ app.post('/login', upload.none(), (req, res) => {
   console.log('Successful login');
 
   res.status(200).end();
-});
+}
 
 
 function checkAuth(req, res, next) {
@@ -147,12 +191,30 @@ function checkAuth(req, res, next) {
 }
 
 
-app.get('/statuses', checkAuth, (req, res) => {
+function onConnection(socket) {
+  console.log('User connected');
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected');
+  });
+
+  socket.on('error', onError);
+}
+
+
+function onError(err) {
+  if (err) {
+    console.log('Error: ' + err);
+  }
+}
+
+
+function onGetStatuses(req, res) {
   res.send(statuses);
-})
+}
 
 
-app.get('/tasks', checkAuth, (req, res) => {
+function onGetTasks(req, res) {
   const rawTasks = fs.readFileSync('tasks.json');
   let tasks = JSON.parse(rawTasks);
 
@@ -165,10 +227,10 @@ app.get('/tasks', checkAuth, (req, res) => {
   }
 
   res.send(tasks);
-})
+}
 
 
-app.get('/tasks/:id/file', checkAuth, (req, res) => {
+function onGetTaskFile(req, res) {
   const rawTasks = fs.readFileSync('tasks.json');
   const tasks = JSON.parse(rawTasks);
   
@@ -177,10 +239,10 @@ app.get('/tasks/:id/file', checkAuth, (req, res) => {
   const task = tasks.find(t => t.id === taskId);
 
   res.download(`${__dirname}/Task files/${taskId}.bin`, task.file);
-})
+}
 
 
-app.put('/tasks/:id/update', checkAuth, upload.single('file'), (req, res) => {
+function onUpdateTask(req, res) {
   if (!req.body) {
     return res.sendStatus(400);
   }
@@ -225,10 +287,10 @@ app.put('/tasks/:id/update', checkAuth, upload.single('file'), (req, res) => {
   fs.writeFileSync('tasks.json', writeData);
 
   res.sendStatus(200);
-})
+}
 
 
-app.post('/tasks/add', checkAuth, upload.single('file'), (req, res) => {
+function onTaskAdd(req, res) {
   if (!req.body) {
     return res.sendStatus(400);
   }
@@ -269,10 +331,10 @@ app.post('/tasks/add', checkAuth, upload.single('file'), (req, res) => {
   fs.writeFileSync('tasks.json', writeData);
 
   res.status(200).send(String(taskId));
-})
+}
 
 
-app.delete('/tasks/:id/delete', checkAuth, (req, res) => {
+function onTaskDelete(req, res) {
   const rawTasks = fs.readFileSync('tasks.json');
   let tasks = JSON.parse(rawTasks);
 
@@ -293,7 +355,7 @@ app.delete('/tasks/:id/delete', checkAuth, (req, res) => {
   fs.writeFileSync('tasks.json', writeData);
 
   res.sendStatus(200);
-})
+}
 
 
 server.listen(port, () => {
