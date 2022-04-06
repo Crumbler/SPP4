@@ -10,6 +10,8 @@ let statuses, tasks, currentTask,
 
 let addingTask = false;
 
+let socket = io();
+
 
 window.onload = onWindowLoad;
 
@@ -39,12 +41,12 @@ async function getStatuses() {
     if (response.ok) {
         statuses = await response.json();
 
-        let statusOptions = statuses.map(status => createStatusOption(status));
+        let statusOptions = statuses.map(createStatusOption);
 
         $('.modal #task-status > *').remove();
         $('.modal #task-status').append(...statusOptions);
 
-        statusOptions = statuses.map(status => createStatusOption(status));
+        statusOptions = [ 'None' ].concat(statuses).map(createStatusOption);
 
         $('#filter-type > *').remove();
         $('#filter-type').append(...statusOptions);

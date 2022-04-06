@@ -5,8 +5,12 @@ const fs = require('fs');
 const cookieParser = require('cookie-parser');
 const { path, use } = require('express/lib/application');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const { Server } = require('socket.io');
 const app = express();
+const http = require('http');
+const server = http.createServer(app);
+const io = new Server(server);
+const bcrypt = require('bcrypt');
 
 const port = 80;
 const jwtKey = 'mysecretkey';
@@ -17,6 +21,19 @@ app.use('/', express.static('html'));
 app.use('/', express.static('css'));
 app.use('/', express.static('js'));
 app.use('/', express.static('svg'));
+
+app.get('/socket.io.js', (req, res) => {
+  res.sendFile(__dirname + 'node_modules/socket.io/client-dist/socket.io.js');
+});
+
+
+io.on('connection', (socket) => {
+  console.log('a user connected');
+
+  socket.on('disconnect', () => {
+    console.log('user disconnected');
+  });
+});
 
 
 let statuses;
@@ -279,6 +296,6 @@ app.delete('/tasks/:id/delete', checkAuth, (req, res) => {
 })
 
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Listening on port ${port}`);
 });
