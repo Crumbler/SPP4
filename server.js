@@ -208,11 +208,12 @@ function onGetStatuses(callback) {
   callback(statuses);
 }
 
+
 function onGetTasks(filter, callback) {
   const rawTasks = fs.readFileSync('tasks.json');
   let tasks = JSON.parse(rawTasks);
 
-  if (filter)
+  if (filter != null)
   {
     filter = Number(filter);
     tasks = tasks.filter(task => task.statusId === filter);
