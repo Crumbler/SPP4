@@ -347,25 +347,16 @@ function onModalTaskSubmit(event) {
 }
 
 
-function addTask(formData) {
-    const response = await fetch(`/tasks/add`, {
-        method: 'POST',
-        body: formData
-    });
-
-    const result = await response.text();
-
-    const taskId = Number(result);
-
+async function addTask(formData) {
     const task = { }
 
     task.title = formData.get('name');
     task.statusId = Number(formData.get('statusid'));
     task.completionDate = formData.get('date');
-    task.id = taskId;
 
     const taskFile = formData.get('file');
-
+    
+    let taskFileData = currentFileData;
     task.file = taskFile.name;
 
     if (!task.completionDate) {
@@ -373,10 +364,21 @@ function addTask(formData) {
     }
 
     if (!task.file) {
-            ask.file = null;
+        task.file = null;
+        taskFileData = null;
     }
 
+    const taskId = await emitAsync('add', task, taskFileData);
+
+    task.id = taskId;
+
     $('main').append(createTaskElement(task));
+
+    const aTag = currentTaskElement.firstChild.lastChild;
+
+    if (aTag.nodeType === Node.ELEMENT_NODE) {
+        aTag.onclick = onFileClick;
+    }
 }
 
 

@@ -50,7 +50,6 @@ app.post('/login', upload.none(), onLogin);
 
 app.use(checkAuth);
 
-app.post('/tasks/add', upload.single('file'), onTaskAdd);
 app.delete('/tasks/:id/delete', onTaskDelete);
 
 io = new Server(server, {
@@ -208,6 +207,8 @@ function onConnection(socket) {
 
   socket.on('file', onGetTaskFile);
 
+  socket.on('add', onTaskAdd);
+
   socket.on('error', onError);
 }
 
@@ -293,11 +294,7 @@ function onUpdateTask(receivedTask, file) {
 }
 
 
-function onTaskAdd(req, res) {
-  if (!req.body) {
-    return res.sendStatus(400);
-  }
-
+function onTaskAdd(receivedTask, file, callback) {
   const rawTasks = fs.readFileSync('tasks.json');
   const tasks = JSON.parse(rawTasks);
   
@@ -305,26 +302,20 @@ function onTaskAdd(req, res) {
   
   const task = { 
     id: taskId,
-    title: req.body.name ?? 'New task',
-    statusId: Number(req.body.statusid ?? '0'),
-    completionDate: req.body.date
+    title: receivedTask.title ?? 'New task',
+    statusId: Number(receivedTask.statusid ?? '0'),
+    completionDate: receivedTask.completionDate
   };
 
-  if (!req.body.date) {
+  if (!receivedTask.date) {
     task.completionDate = null;
   }
 
-  if (req.file) {
-    fs.renameSync('Task files/' + req.file.filename, 'Task files/' + taskId + '.bin');
-    task.file = req.file.originalname;
+  if (file) {
+    fs.writeFileSync(`Task files/${taskId}.bin`, file);
+    task.file = receivedTask.file;
   }
   else {
-    try {
-      fs.unlinkSync('Task files/' + taskId + '.bin');
-    } catch(err) {
-      // file didn't exist
-    }
-
     task.file = null;
   }
 
@@ -333,7 +324,7 @@ function onTaskAdd(req, res) {
   const writeData = JSON.stringify(tasks, null, 2);
   fs.writeFileSync('tasks.json', writeData);
 
-  res.status(200).send(String(taskId));
+  callback(taskId);
 }
 
 
