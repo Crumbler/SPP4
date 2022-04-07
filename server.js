@@ -45,8 +45,6 @@ app.post('/login', upload.none(), onLogin);
 
 app.use(checkAuth);
 
-app.get('/statuses', onGetStatuses);
-app.get('/tasks', onGetTasks);
 app.get('/tasks/:id/file', onGetTaskFile);
 app.put('/tasks/:id/update', upload.single('file'), onUpdateTask);
 app.post('/tasks/add', upload.single('file'), onTaskAdd);
@@ -60,7 +58,7 @@ io = new Server(server, {
 function checkHandshake(req, callback) {
   if (!req.headers.cookie) {
     console.log('Authentication rejected due to lack of token');
-    return;
+    return callback(null, false);
   }
 
   const cookies = cookie.parse(req.headers.cookie);
@@ -69,7 +67,7 @@ function checkHandshake(req, callback) {
 
   if (!token) {
     console.log('Authentication rejected due to lack of token');
-    return;
+    return callback(null, false);
   }
 
   try {
@@ -78,11 +76,11 @@ function checkHandshake(req, callback) {
 		if (err instanceof jwt.JsonWebTokenError) {
 			// Unauthorized JWT
       console.log('Unauthorized JWT');
-			return;
+			return callback(null, false);
 		}
 		// Otherwise, bad request
     console.log('Bad request');
-		return;
+		return callback(null, false);
 	}
 
   callback(null, true);
@@ -198,27 +196,21 @@ function onConnection(socket) {
     console.log('User disconnected');
   });
 
+  socket.on('statuses', onGetStatuses);
+
+  socket.on('tasks', onGetTasks);
+
   socket.on('error', onError);
 }
 
 
-function onError(err) {
-  if (err) {
-    console.log('Error: ' + err);
-  }
+function onGetStatuses(callback) {
+  callback(statuses);
 }
 
-
-function onGetStatuses(req, res) {
-  res.send(statuses);
-}
-
-
-function onGetTasks(req, res) {
+function onGetTasks(filter, callback) {
   const rawTasks = fs.readFileSync('tasks.json');
   let tasks = JSON.parse(rawTasks);
-
-  let filter = req.query.filter;
 
   if (filter)
   {
@@ -226,7 +218,13 @@ function onGetTasks(req, res) {
     tasks = tasks.filter(task => task.statusId === filter);
   }
 
-  res.send(tasks);
+  callback(tasks);
+}
+
+function onError(err) {
+  if (err) {
+    console.log('Error: ' + err);
+  }
 }
 
 

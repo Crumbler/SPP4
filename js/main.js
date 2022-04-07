@@ -10,7 +10,10 @@ let statuses, tasks, currentTask,
 
 let addingTask = false;
 
-let socket;
+let socket = io({
+    reconnection: false,
+    autoConnect: false
+});
 
 
 window.onload = onWindowLoad;
@@ -23,17 +26,15 @@ $('.modal-login .modal-content .button-signup').click(onModalLoginSignUp);
 $('.task-add-button').click(onAddClick);
 
 
-async function onWindowLoad() {
+function onWindowLoad() {
     clearTasks();
+    
+    promptLogin();
 
-    socket = io();
+    socket.on('connect', onConnect);
+    socket.on('connect_error', onConnectError);
 
-    if (!checkAuth()) {
-        return;
-    }
-
-    await getStatuses();
-    getTasks();
+    socket.connect();
 }
 
 
@@ -42,31 +43,48 @@ function clearTasks() {
 }
 
 
-function checkAuth() {
+function emitAsync(...args) {
+    return new Promise((resolve, reject) => {
+        socket.emit(...args, res => resolve(res));
+    });
+}
 
-    return true;
+
+async function onConnect() {
+    console.log('Connected');
+
+    clearTasks();
+
+    hideModalLogin();
+
+    await getStatuses();
+    getTasks()
+}
+
+
+function onConnectError(err) {
+    promptLogin();
+    console.log('Connect error: ' + err.message);
 }
 
 
 async function getStatuses() {
-    const response = await fetch('/statuses');
-
-    if (response.ok) {
-        statuses = await response.json();
-
-        let statusOptions = statuses.map(createStatusOption);
-
-        $('.modal #task-status > *').remove();
-        $('.modal #task-status').append(...statusOptions);
-
-        statusOptions = [ 'None' ].concat(statuses).map(createStatusOption);
-
-        $('#filter-type > *').remove();
-        $('#filter-type').append(...statusOptions);
-    }
-    else {
+    if (!socket.connected) {
         promptLogin();
+        return;
     }
+
+    statuses = await emitAsync('statuses');
+
+    let statusOptions = statuses.map(createStatusOption);
+
+    $('.modal #task-status > *').remove();
+    $('.modal #task-status').append(...statusOptions);
+
+    statusOptions = [ 'None' ].concat(statuses).map(createStatusOption);
+
+    $('#filter-type > *').remove();
+    $('#filter-type').append(...statusOptions);
 }
 
 
@@ -86,24 +104,16 @@ function createStatusOption(status) {
 
 
 async function getTasks(status) {
-    const url = new URL('/tasks', `${window.location.protocol}//${window.location.hostname}`);
-
-    if (status != null) {
-        url.searchParams.set('filter', status);
+    if (!socket.connected) {
+        socket.connect();
+        return;
     }
 
-    const response = await fetch(url);
+    tasks = await emitAsync('tasks', status);
 
-    if (response.ok) {
-        tasks = await response.json();
+    const taskElements = tasks.map(task => createTaskElement(task));
 
-        const taskElements = tasks.map(task => createTaskElement(task));
-
-        $('main').append(...taskElements);
-    }
-    else {
-        promptLogin();
-    }
+    $('main').append(...taskElements);
 }
 
 
@@ -195,11 +205,7 @@ async function LogSign(urlpath, formData) {
     });
 
     if (response.ok) {
-        clearTasks();
-        await getStatuses();
-        getTasks();
-
-        hideModalLogin();
+        socket.connect();
     }
     else {
         resetModalLoginForm();
