@@ -303,19 +303,13 @@ async function onDeleteClick(event) {
 
     currentTask = currentTaskElement.task;
 
-    const fetchURL = `/tasks/${currentTask.id}/delete`;
+    socket.emit('delete', currentTask.id);
+    
+    const taskInd = tasks.findIndex(task => task === currentTask);
+    tasks.splice(taskInd, 1);
+    tasks = tasks.filter(t => t != null);
 
-    const response = await fetch(fetchURL, {
-        method: 'DELETE'
-    });
-
-    if (response.ok) {
-        const taskInd = tasks.findIndex(task => task === currentTask);
-        tasks.splice(taskInd, 1);
-        tasks = tasks.filter(t => t != null);
-
-        currentTaskElement.remove();
-    }
+    currentTaskElement.remove();
 }
 
 
@@ -372,9 +366,11 @@ async function addTask(formData) {
 
     task.id = taskId;
 
-    $('main').append(createTaskElement(task));
+    let newElement = createTaskElement(task);
 
-    const aTag = currentTaskElement.firstChild.lastChild;
+    $('main').append(newElement);
+
+    const aTag = newElement.firstChild.lastChild;
 
     if (aTag.nodeType === Node.ELEMENT_NODE) {
         aTag.onclick = onFileClick;

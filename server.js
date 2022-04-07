@@ -12,7 +12,6 @@ const http = require('http');
 const server = http.createServer(app);
 let io;
 const bcrypt = require('bcrypt');
-const res = require('express/lib/response');
 
 const port = 80;
 const jwtKey = 'mysecretkey';
@@ -39,7 +38,7 @@ app.get('/socket.io.js', (req, res) => {
 });
 
 app.get('/FileSaver.js', (req, res) => {
-  res.sendFile(__dirname + '/node_modules/file-saver/dist/FileSaver.js');
+  res.sendFile(__dirname + '/node_modules/file-saver/dist/FileSaver.min.js');
 });
 
 
@@ -49,8 +48,6 @@ app.post('/signup', upload.none(), onSignup);
 app.post('/login', upload.none(), onLogin);
 
 app.use(checkAuth);
-
-app.delete('/tasks/:id/delete', onTaskDelete);
 
 io = new Server(server, {
   allowRequest: checkHandshake,
@@ -209,6 +206,8 @@ function onConnection(socket) {
 
   socket.on('add', onTaskAdd);
 
+  socket.on('delete', onTaskDelete);
+
   socket.on('error', onError);
 }
 
@@ -328,11 +327,9 @@ function onTaskAdd(receivedTask, file, callback) {
 }
 
 
-function onTaskDelete(req, res) {
+function onTaskDelete(taskId) {
   const rawTasks = fs.readFileSync('tasks.json');
   let tasks = JSON.parse(rawTasks);
-
-  const taskId = Number(req.params.id);
 
   const taskInd = tasks.findIndex(task => task.id === taskId);
   
@@ -347,8 +344,6 @@ function onTaskDelete(req, res) {
 
   const writeData = JSON.stringify(tasks, null, 2);
   fs.writeFileSync('tasks.json', writeData);
-
-  res.sendStatus(200);
 }
 
 
