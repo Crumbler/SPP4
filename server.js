@@ -35,8 +35,13 @@ app.use('/', express.static('svg'));
 
 
 app.get('/socket.io.js', (req, res) => {
-  res.sendFile(__dirname + 'node_modules/socket.io/client-dist/socket.io.js');
+  res.sendFile(__dirname + '/node_modules/socket.io/client-dist/socket.io.js');
 });
+
+app.get('/FileSaver.js', (req, res) => {
+  res.sendFile(__dirname + '/node_modules/file-saver/dist/FileSaver.js');
+});
+
 
 app.use(cookieParser());
 
@@ -45,13 +50,12 @@ app.post('/login', upload.none(), onLogin);
 
 app.use(checkAuth);
 
-app.get('/tasks/:id/file', onGetTaskFile);
-app.put('/tasks/:id/update', upload.single('file'), onUpdateTask);
 app.post('/tasks/add', upload.single('file'), onTaskAdd);
 app.delete('/tasks/:id/delete', onTaskDelete);
 
 io = new Server(server, {
-  allowRequest: checkHandshake
+  allowRequest: checkHandshake,
+  maxHttpBufferSize: 10e6 // 10 MB
 });
 
 
@@ -200,6 +204,10 @@ function onConnection(socket) {
 
   socket.on('tasks', onGetTasks);
 
+  socket.on('update', onUpdateTask);
+
+  socket.on('file', onGetTaskFile);
+
   socket.on('error', onError);
 }
 
@@ -229,48 +237,46 @@ function onError(err) {
 }
 
 
-function onGetTaskFile(req, res) {
+function onGetTaskFile(taskId, callback) {
   const rawTasks = fs.readFileSync('tasks.json');
   const tasks = JSON.parse(rawTasks);
-  
-  const taskId = Number(req.params.id);
 
   const task = tasks.find(t => t.id === taskId);
 
-  res.download(`${__dirname}/Task files/${taskId}.bin`, task.file);
+  const rawFile = fs.readFileSync(`Task files/${taskId}.bin`);
+
+  callback(rawFile);
 }
 
 
-function onUpdateTask(req, res) {
-  if (!req.body) {
-    return res.sendStatus(400);
-  }
-
+function onUpdateTask(receivedTask, file) {
   const rawTasks = fs.readFileSync('tasks.json');
   const tasks = JSON.parse(rawTasks);
+
+  console.log('Received task ' + receivedTask.title);
   
-  const taskId = Number(req.params.id);
+  const taskId = receivedTask.id;
   
   const task = tasks.find(t => t.id === taskId);
 
-  if (req.body.name != null) {
-    task.title = req.body.name;
+  if (receivedTask.title != null) {
+    task.title = receivedTask.title;
   }
 
-  if (req.body.statusid != null) {
-    task.statusId = Number(req.body.statusid);
+  if (receivedTask.statusid != null) {
+    task.statusId = receivedTask.statusid;
   }
 
-  if (req.body.date) {
-    task.completionDate = req.body.date;
+  if (receivedTask.date) {
+    task.completionDate = receivedTask.date;
   }
   else {
     task.completionDate = null;
   }
 
-  if (req.file) {
-    fs.renameSync(`Task files/${req.file.filename}`, `Task files/${taskId}.bin`);
-    task.file = req.file.originalname;
+  if (file != null) {
+    fs.writeFileSync(`Task files/${taskId}.bin`, file);
+    task.file = receivedTask.file;
   }
   else {
     try {
@@ -281,11 +287,9 @@ function onUpdateTask(req, res) {
 
     task.file = null;
   }
-
+  
   const writeData = JSON.stringify(tasks, null, 2);
   fs.writeFileSync('tasks.json', writeData);
-
-  res.sendStatus(200);
 }
 
 

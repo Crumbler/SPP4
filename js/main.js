@@ -10,6 +10,8 @@ let statuses, tasks, currentTask,
 
 let addingTask = false;
 
+let currentFileData;
+
 let socket = io({
     reconnection: false,
     autoConnect: false
@@ -24,6 +26,7 @@ $('.modal-task .modal-content .button-close').click(onModalTaskClose);
 $('.modal-login .modal-content').submit(onModalLoginSubmit);
 $('.modal-login .modal-content .button-signup').click(onModalLoginSignUp);
 $('.task-add-button').click(onAddClick);
+$('#task-file').change(onFileUpload);
 
 
 function onWindowLoad() {
@@ -35,6 +38,25 @@ function onWindowLoad() {
     socket.on('connect_error', onConnectError);
 
     socket.connect();
+}
+
+
+function onFileUpload(event) {
+    console.log('file uploaded');
+
+    let file = event.target.files[0];
+
+    let reader = new FileReader();
+
+    reader.readAsArrayBuffer(file);
+
+    reader.onload = () => {
+        currentFileData = reader.result;
+    };
+
+    reader.onerror = () => {
+        console.log(reader.error);
+    };
 }
 
 
@@ -125,7 +147,7 @@ function getTaskHTML(task) {
     let filePart = 'None';
 
     if (task.file) {
-        filePart = `<a href="/tasks/${task.id}/file">${task.file}</a>`;
+        filePart = `<a>${task.file}</a>`;
     }
 
     return mainPart + filePart;
@@ -136,6 +158,12 @@ function createTaskElement(task) {
     const taskContent = document.createElement('div');
     taskContent.className = 'task-content';
     taskContent.innerHTML = getTaskHTML(task);
+
+    const aTag = taskContent.lastChild;
+
+    if (aTag.nodeType === Node.ELEMENT_NODE) {
+        aTag.onclick = onFileClick;
+    }
 
     const icon1 = document.createElement('icon');
     icon1.className = 'icon icon-edit';
@@ -163,6 +191,17 @@ function createTaskElement(task) {
     taskElement.append(taskContent, taskDropdown);
 
     return taskElement;
+}
+
+
+async function onFileClick() {
+    const task = this.parentNode.parentNode.task;
+
+    const file = await emitAsync('file', task.id);
+
+    const fileBlob = new Blob([file]);
+
+    saveAs(fileBlob, task.file);
 }
 
 
@@ -308,7 +347,7 @@ function onModalTaskSubmit(event) {
 }
 
 
-async function addTask(formData) {
+function addTask(formData) {
     const response = await fetch(`/tasks/add`, {
         method: 'POST',
         body: formData
@@ -318,55 +357,56 @@ async function addTask(formData) {
 
     const taskId = Number(result);
 
-    if (response.ok) {
-        const task = { }
+    const task = { }
 
-        task.title = formData.get('name');
-        task.statusId = Number(formData.get('statusid'));
-        task.completionDate = formData.get('date');
-        task.id = taskId;
+    task.title = formData.get('name');
+    task.statusId = Number(formData.get('statusid'));
+    task.completionDate = formData.get('date');
+    task.id = taskId;
 
-        const taskFile = formData.get('file');
+    const taskFile = formData.get('file');
 
-        task.file = taskFile.name;
+    task.file = taskFile.name;
 
-        if (!task.completionDate) {
-            task.completionDate = null;
-        }
-
-        if (!task.file) {
-            task.file = null;
-        }
-
-        $('main').append(createTaskElement(task));
+    if (!task.completionDate) {
+        task.completionDate = null;
     }
+
+    if (!task.file) {
+            ask.file = null;
+    }
+
+    $('main').append(createTaskElement(task));
 }
 
 
-async function updateTask(formData) {
-    const response = await fetch(`/tasks/${currentTask.id}/update`, {
-        method: 'PUT',
-        body: formData
-    });
+function updateTask(formData) {
+    currentTask.title = formData.get('name');
+    currentTask.statusId = Number(formData.get('statusid'));
+    currentTask.completionDate = formData.get('date');
 
-    if (response.ok) {
-        currentTask.title = formData.get('name');
-        currentTask.statusId = Number(formData.get('statusid'));
-        currentTask.completionDate = formData.get('date');
+    const taskFileObj = formData.get('file');
 
-        const taskFile = formData.get('file');
+    currentTask.file = taskFileObj.name;
+    let fileToSend = currentFileData;
 
-        currentTask.file = taskFile.name;
+    if (!currentTask.completionDate) {
+        currentTask.completionDate = null;
+    }
 
-        if (!currentTask.completionDate) {
-            currentTask.completionDate = null;
-        }
+    if (!currentTask.file) {
+        currentTask.file = null;
+        fileToSend = null;
+    }
 
-        if (!currentTask.file) {
-            currentTask.file = null;
-        }
+    socket.emit('update', currentTask, fileToSend);
 
-        currentTaskElement.firstChild.innerHTML = getTaskHTML(currentTask);
+    currentTaskElement.firstChild.innerHTML = getTaskHTML(currentTask);
+
+    const aTag = currentTaskElement.firstChild.lastChild;
+
+    if (aTag.nodeType === Node.ELEMENT_NODE) {
+        aTag.onclick = onFileClick;
     }
 }
 
